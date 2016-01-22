@@ -1,4 +1,4 @@
-# Docker container with Grafana, Prometheus and InfluxDB
+## Docker container with Grafana, Prometheus and InfluxDB
 
  * [Prometheus](http://prometheus.io/) - monitoring system and time series database.
  * [Grafana](http://grafana.org/) - feature rich metrics dashboard and graph editor for Graphite, InfluxDB, OpenTSDB etc.
@@ -9,9 +9,10 @@
 ![image](diagram.png)
 
 On the diagram, you can see the connections between 3 docker containers we are going to use.
-The containers themselves may run on different host machines, not necessary the same one.
-For demo purpose, my host machine has IP `192.168.56.107` and will run all three containers.
-Note, under a host machine can be even a virtual machine.
+Grafana+Prometheus+InfluxDB container is supposed to be run on a monitor host and Prometheus exporters are
+supposed to be run on MySQL host.
+For demo purpose, I will run all three containers on the single host machine with IP `192.168.56.107`.
+Note, as a host machine you can of course use a virtual machine.
 
 ### Running Grafana+Prometheus+InfluxDB container
 
@@ -22,35 +23,49 @@ Get the source:
 
 Edit `prometheus.yml` with the host IPs you are going to monitor.
 These are IPs of the machines where Prometheus exporter containers will run.
-In my case, it's all `192.168.56.107`.
+In this case, it's all `192.168.56.107`.
 
-Build docker image and run container:
-    
-    docker build -t graf-prom-infl .
-    docker run -d -p 3000:3000 -p 9090:9090 -p 8083:8083 -p 8086:8086 --name prom graf-prom-infl
+Build docker image:
 
-Now you can access:
+    docker build -t grafana-prometheus-influx .
+
+Run container:
+
+    docker run -d -p 3000:3000 -p 9090:9090 -p 8083:8083 -p 8086:8086 --name prom grafana-prometheus-influx
+
+To run container with persistent storage from the host folders:
+
+    mkdir -p /root/docker_shared/{prometheus,influxdb,grafana}
+    chcon -Rt svirt_sandbox_file_t /root/docker_shared  # selinux fix
+
+    docker run -d -p 3000:3000 -p 9090:9090 -p 8083:8083 -p 8086:8086 --name prom \
+        -v /root/docker_shared/prometheus:/opt/prometheus/data \
+        -v /root/docker_shared/influxdb:/var/lib/influxdb \
+        -v /root/docker_shared/grafana:/var/lib/grafana \
+        grafana-prometheus-influx
+
+Now you can access the tools, however with no data yet:
 
  * Prometheus `http://<machine_host>:9090`
- * Grafana `http://<machine_host>:3000`
+ * Grafana `http://<machine_host>:3000` (admin/admin)
  * InfluxDB `http://<machine_host>:8083`
 
 ### Running Prometheus exporters with official containers
 
-Assuming `192.168.56.107` is a host machine being monitored so we will run those containers there.
-
 ### mysqld_exporter container
 
 mysqld_exporter needs to connect to MySQL from inside container to wherever MySQL runs.
-In my case, it is my host machine which IP is given in `DATA_SOURCE_NAME` when running container (see below).
+In this case, it is the current host machine which IP is given in `DATA_SOURCE_NAME`
+when running container (see below).
 
-Create MySQL user `prom@%` with the password `abc123` to use by exporter:
+Create MySQL user for access by exporter:
 
     mysql> GRANT REPLICATION CLIENT, PROCESS ON *.* TO 'prom'@'%' identified by 'abc123';
 
 Run container:
 
-    docker run -d -p 9104:9104 -e DATA_SOURCE_NAME="prom:abc123@(192.168.56.107:3306)/" --name prom-mysql prom/mysqld-exporter -collect.info_schema.tables=false -collect.binlog_size=true -collect.info_schema.processlist=true
+    docker run -d -p 9104:9104 -e DATA_SOURCE_NAME="prom:abc123@(192.168.56.107:3306)/" \
+        --name prom-mysql prom/mysqld-exporter -collect.info_schema.processlist=true
 
 Verify:
 
@@ -61,9 +76,10 @@ Verify:
 
 Run container:
 
-    docker run -d -p 9100:9100 --net="host" --name prom-node prom/node-exporter -collectors.enabled="diskstats,filesystem,loadavg,meminfo,stat,netdev,time,uname"
+    docker run -d -p 9100:9100 --net="host" --name prom-node prom/node-exporter \
+        -collectors.enabled="diskstats,filesystem,loadavg,meminfo,stat,netdev,time,uname"
 
 Verify:
 
-    docker logs prom-mysql
+    docker logs prom-node
     curl http://localhost:9100/metrics
