@@ -1,0 +1,16 @@
+global:
+  scrape_interval:     5s
+  evaluation_interval: 5s
+ 
+scrape_configs:
+  - job_name: monitor
+    target_groups:
+      - targets: ['192.168.56.107:9100', '192.168.56.107:9104']
+        labels:
+          alias: myhost1
+
+# By adding more sections like this you can add more hosts.
+#      - targets: ['192.168.56.108:9100', '192.168.56.108:9104']
+#        labels:
+#          alias: myhost2
+
