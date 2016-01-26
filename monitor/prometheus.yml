@@ -1,0 +1,11 @@
+global:
+  scrape_interval:     5s
+  evaluation_interval: 5s
+ 
+scrape_configs:
+  - job_name: monitor
+    target_groups:
+      - targets: ['DB_NODE_IP:9100', 'DB_NODE_IP:9104']
+        labels:
+          alias: DB_NODE_ALIAS
+

@@ -11,7 +11,6 @@ RUN curl -L -o prometheus.tar.gz https://github.com/prometheus/prometheus/releas
 RUN mkdir prometheus
 RUN tar zxf prometheus.tar.gz --strip-components=1 -C prometheus
 RUN git clone https://github.com/percona/grafana-dashboards.git
-RUN mv grafana-dashboards/dashboards /var/lib/grafana/
 ADD grafana.ini /etc/grafana/
 ADD supervisord.conf /etc/
 ADD prometheus.yml /opt/prometheus/
