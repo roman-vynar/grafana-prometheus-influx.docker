@@ -18,8 +18,6 @@ On the diagram below you can see the connections between monitor and db node con
 
 ![image](diagram.png)
 
-Assuming `192.168.56.107` is IP address of the db machine aliased as `db1`.
-
 ### Running monitor container
 
 Get the source:
@@ -30,6 +28,8 @@ Get the source:
 Build docker image:
 
     docker build -t monitor monitor/
+
+Assuming `192.168.56.107` is IP address of the db machine aliased as `db1` which is going to be monitored.
 
 Run container:
 
@@ -57,8 +57,8 @@ Now you can access the tools (with no data yet):
 
 Create MySQL user on the db machine for access by mysqld_exporter:
 
-    mysql> GRANT REPLICATION CLIENT, PROCESS ON *.* TO 'prom'@'%' identified by 'abc123';
-    mysql> GRANT SELECT ON performance_schema.* TO 'prom'@'%';
+    mysql> GRANT REPLICATION CLIENT, PROCESS ON *.* TO 'prom'@'localhost' identified by 'abc123';
+    mysql> GRANT SELECT ON performance_schema.* TO 'prom'@'localhost';
 
 Build docker image:
 
@@ -67,4 +67,4 @@ Build docker image:
 Run container:
 
     docker run -d -p 9100:9100 -p 9104:9104 --net="host" \
-        -e DATA_SOURCE_NAME="prom:abc123@(192.168.56.107:3306)/" --name exp dbnode 
+        -e DATA_SOURCE_NAME="prom:abc123@(localhost:3306)/" --name exp dbnode
